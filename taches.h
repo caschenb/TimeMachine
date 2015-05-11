@@ -2,15 +2,16 @@
 #define _TACHES_H
 #include <iostream>
 #include <string>
-//#include "timing.h"
+#include "timing.h"
 /* ****************************************************TACHES**************************************************** */
 class Tache {  //la classe est abstraite
 	private:
 	string titre;
 	Date date_disponibilite;
 	Date echeance;
-	Tache(const Tache& t); //empêche la duplication  (constructeur de recopie)
-	Tache& operator=(const Tache& t);
+	public:
+	//Tache(const Tache& t); //empêche la duplication  (constructeur de recopie)
+	//Tache& operator=(const Tache& t);
 	Tache(const string& t, const Date& dispo, const Date& deadline):
 			titre(t), date_disponibilite(dispo), echeance(deadline){}
 	//friend Tache& TacheManager::ajouterTache(const string& id, const string& t, const Duree& dur, const Date& dispo, const Date& deadline);
@@ -27,7 +28,7 @@ class Tache_unitaire : public Tache {
 	private:
 	Duree duree; 
 	public:
-	Tache(const string& t, const Duree& dur, const Date& dispo, const Date& deadline): Tache(t, dispo, deadline), duree (dur) {}
+	Tache_unitaire(const string& t, const Duree& dur, const Date& dispo, const Date& deadline): Tache(t, dispo, deadline), duree (dur) {}
 	Duree getDuree() const { return duree; }
 };
 
@@ -43,8 +44,7 @@ class Tache_composite : public Tache {
     		nbMax=0;
     		taches=0;
 		}
-	Tache(const string& t, const Duree& dur, const Date& dispo, const Date& deadline): Tache(t, dispo, deadline) {}
-	~Tache_composite() {
+	Tache_composite(const string& t, const Duree& dur, const Date& dispo, const Date& deadline): Tache(t, dispo, deadline) {}
 };
 
 
