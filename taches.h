@@ -47,4 +47,94 @@ class Tache_composite : public Tache {
 	Tache_composite(const string& t, const Duree& dur, const Date& dispo, const Date& deadline): Tache(t, dispo, deadline) {}
 };
 
+class Tache_preempte: public Tache_unitaire {
+	public:	
+	Tache_preempte(const string& t, const Duree& dur, const Date& dispo, const Date& deadline): Tache_unitaire(t, dur, dispo, deadline) {}
+	};
+
+class Tache_non_preempte: public Tache_unitaire {
+	public:	
+	Tache_non_preempte(const string& t, const Duree& dur, const Date& dispo, const Date& deadline): Tache_unitaire(t, dur, dispo, deadline) {}
+	};	
+	
+/******************************************** TACHE MANAGER**********************************************/
+//attention a penser a declarer tachemanager avant tache ou le contraire en cas d'erreur
+class TacheManager {
+private:
+	Tache** taches;
+	unsigned int nb;
+	unsigned int nbMax;
+	void addItem(Tache* t);
+	Tache* trouverTache(const string& id) const;
+	string file;
+	TacheManager();   //on doit bloquer toutes les possibilités de
+	~TacheManager();  //création et de destruction de l'opérateur =>privé
+	//TacheManager(const TacheManager& um);
+	TacheManager& operator=(const TacheManager& um);
+	struct Handler {
+	    TacheManager* instanceUnique;
+	    Handler(): instanceUnique(0) {}
+	    ~Handler() {delete instanceUnique;}
+	};
+	static Handler handler;
+	public:
+	Tache& ajouterTache(const string& id, const string& t, const Duree& dur, const Date& dispo, const Date& deadline);
+	Tache& getTache(const string& id);
+	const Tache& getTache(const string& code) const;
+	void load(const string& f);
+	void save(const string& f);
+	static TacheManager& getInstance();
+	static void libererInstance();
+
+	class iterator {
+	      int indice_tache;
+	    public:
+	    iterator():indice_tache(0){}
+        Tache& operator*() const { if(indice_tache>=getInstance().nb)  //singleton permet d'acceder à cela n'importe ou dans le code.
+           throw "indirection d'un itérateur en fin de séquence";
+           return *getInstance().taches[indice_tache];
+           }
+           iterator& operator++() {
+               if(indice_tache>=getInstance().nb)  //singleton permet d'acceder à cela n'importe ou dans le code.
+           throw "incrementation d'un itérateur en fin de séquence";
+           ++indice_tache;
+           return *this;
+           }
+            bool operator!=(iterator it) const {
+                 return indice_tache!=it.indice_tache;
+                 }
+            bool operator==(iterator it) const {
+                 return indice_tache==it.indice_tache;
+                 }
+
+            friend class TacheManager;
+	};
+    iterator begin() {return iterator(); }
+    iterator end() {
+        iterator tmp;
+         tmp.indice_tache=nb;
+         return tmp;
+    }
+    /*classe d’iterateur qui permet de parcourir l’ensemble des objets Tache dont la date de disponibilité
+est avant une date donnée, peut être utile plus tard */
+    friend class Tache;
+    friend class DisponibiliteFilterIterator;
+    class DisponibiliteFilterIterator{
+	      int indice_tache;
+	      TIME::Date disp;
+	    public:
+	   DisponibiliteFilterIterator(const TIME::Date& d); //constructeur
+	    Tache& current() const {
+           if(indice_tache>=getInstance().nb)  //singleton permet d'acceder à cela n'importe ou dans le code.
+           throw "indirection d'un itérateur en fin de séquence";
+           return *getInstance().taches[indice_tache];
+           }
+	    bool isDone() const {return indice_tache==getInstance().nb;}
+        void  next () ;
+	};
+	DisponibiliteFilterIterator getDisponibiliteFilterIterator(const TIME::Date& d)
+	{
+	    return DisponibiliteFilterIterator(d);
+	}
+};
 #endif
