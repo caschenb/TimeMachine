@@ -47,15 +47,4 @@ class Tache_composite : public Tache {
 	Tache_composite(const string& t, const Duree& dur, const Date& dispo, const Date& deadline): Tache(t, dispo, deadline) {}
 };
 
-
-/* *********************************** FABRIQUE TACHES ******************************************** */
-
-class FabriqueTache {
-public:
- virtual Tache_unitaire *createTache_unitaire() = 0;
- virtual Tache_composite *createTache_composite() = 0;
-};
-
-
-}
 #endif
