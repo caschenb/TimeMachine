@@ -3,7 +3,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include "Z:\LO21\TD5\timing.h"
+#include "timing.h" //penser a le mettre à jour à chaque fois
 
 /**************************************************** EXCEPTIONS ***************************************/
 class CalendarException{
