@@ -12,11 +12,12 @@ std::ostream& operator<<(std::ostream& fout, const Tache& t){
 }
 
 void Tache::afficher(std::ostream& fout) const{
-    fout<<identificateur<<"\n";
-	fout<<titre<<"\n";
-	fout<<date_disponibilite<<"\n";
-	fout<<echeance<<"\n";
+    fout<<getId()<<"\n";
+	fout<<getTitre()<<"\n";
+	fout<<getDateDisponibilite()<<"\n";
+	fout<<getDateEcheance()<<"\n";
 }
+
 
 std::ostream& operator<<(std::ostream& fout, const Tache_unitaire& t){
 	fout<<t.getId()<<"\n";
@@ -28,11 +29,8 @@ std::ostream& operator<<(std::ostream& fout, const Tache_unitaire& t){
 }
 
 void Tache_unitaire::afficher(std::ostream& fout) const{
-    fout<<getId()<<"\n";
-	fout<<getTitre()<<"\n";
+    Tache::afficher(fout);
 	fout<<duree<<"\n";
-	fout<<getDateDisponibilite()<<"\n";
-	fout<<getDateEcheance()<<"\n";
 }
 /****************************************** TACHES ********************************/
 
@@ -64,9 +62,9 @@ void TacheManager::addItem(Tache* t){
 	return 0;
 }
 
-Tache& TacheManager::ajouterTache(const std::string& id, const std::string& t, const TIME::Date& dispo, const TIME::Date& deadline){
+Tache_composite& TacheManager::ajouterTache(const std::string& id, const std::string& t, const TIME::Date& dispo, const TIME::Date& deadline){
 	if (trouverTache(id)) throw CalendarException("erreur, TacheManager, tache deja existante");
-	Tache* newt=new Tache(id,t,dispo,deadline);
+	Tache_composite* newt=new Tache_composite(id,t,dispo,deadline);
 	addItem(newt);
 	std::cout<<"tache ajoutée: "<<t<<"\n";
 	return *newt;
@@ -100,6 +98,8 @@ void TacheManager::ajouterSousTache(const std::string& id_composite, const std::
     Tache_composite* tc=dynamic_cast<Tache_composite*>(&getTache(id_composite));
     tc->ajouterTacheComp(ta);
 }
+
+
 
 void TacheManager::parcourirTacheComposite(const std::string&id){
     Tache_composite* tc=dynamic_cast<Tache_composite*>(&getTache(id));
@@ -201,4 +201,67 @@ void  TacheManager::DisponibiliteFilterIterator::next () {
             while (indice_tache<getInstance().nb && disp<getInstance().taches[indice_tache]->getDateDisponibilite() )
 	       ++indice_tache;
            }
+
+
+/********************************************** PROJET MANAGER *********************************************/
+void ProjetManager::addItem(Projet* p){
+	if (nb==nbMax){
+		Projet** newtab=new Projet*[nbMax+10];
+		for(unsigned int i=0; i<nb; i++) newtab[i]=projets[i];
+		// ou memcpy(newtab,taches,nb*sizeof(Tache*));
+		nbMax+=10;
+        Projet** old=projets;
+		projets=newtab;
+		delete[] old;
+	}
+	projets[nb++]=p;
+}
+
+/* Tache* ProjetManager::trouverTache(const std::string& id) const{
+	for(unsigned int i=0; i<nb; i++)
+		if (id==taches[i]->getId()) return taches[i];
+	return 0;
+
+Tache& ProjetManager::getTache(const std::string& id){
+	Tache* t=trouverTache(id);
+	if (!t) throw CalendarException("erreur, TacheManager, tache inexistante");
+	return *t;*/
+
+ProjetManager::~ProjetManager(){
+	for(unsigned int i=0; i<nb; i++) delete projets[i];
+	delete[] projets;
+}
+
+void ProjetManager::ajouterTacheProjet( TacheManager& m, const std::string& id_projet, const std::string& id_tache){
+    Tache& ta=m.getTache(id_tache);
+    Projet& p=getProjet(id_projet);
+    p.ajouterTacheP(ta);
+}
+
+void ProjetManager::parcourirTacheProjet(const std::string&id){
+    Projet& p=getProjet(id);
+     for (Projet::contTache::const_iterator it=p.taches_projet.begin();
+            it!=p.Projet::taches_projet.end(); ++it) std::cout<<**it<<"\n";
+   }
+
+Projet& ProjetManager::getProjet(const std::string& id){
+	Projet* p=trouverProjet(id);
+	if (!p) throw CalendarException("erreur,ProjetManager, projet inexistant");
+	return *p;
+}
+
+Projet* ProjetManager::trouverProjet(const std::string& id) const{
+	for(unsigned int i=0; i<nb; i++)
+		if (id==projets[i]->getId()) return projets[i];
+	return 0;
+}
+
+Projet& ProjetManager::ajouterProjet(const std::string& id, const std::string& t,  const TIME::Date& dispo, const TIME::Date& deadline) {
+	if (trouverProjet(id)) throw CalendarException("erreur, TacheProjet, projet deja existant");
+	Projet* newt=new Projet(id,t,dispo,deadline);
+	addItem(newt);
+	std::cout<<"projet ajouté: "<<t<<"\n";
+	return *newt;
+}
+
 
