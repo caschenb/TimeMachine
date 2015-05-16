@@ -1,37 +1,22 @@
 #include "taches.h"
 #include <fstream>
 
-/*****************************  operator<<  AFFICHER******************************/
-
-std::ostream& operator<<(std::ostream& fout, const Tache& t){
-	fout<<t.getId()<<"\n";
-	fout<<t.getTitre()<<"\n";
-	fout<<t.getDateDisponibilite()<<"\n";
-	fout<<t.getDateEcheance()<<"\n";
-	return fout;
-}
+/*****************************  AFFICHER ******************************/
 
 void Tache::afficher(std::ostream& fout) const{
+    fout<<"****************************************************************\n";
     fout<<getId()<<"\n";
 	fout<<getTitre()<<"\n";
 	fout<<getDateDisponibilite()<<"\n";
 	fout<<getDateEcheance()<<"\n";
 }
 
-
-std::ostream& operator<<(std::ostream& fout, const Tache_unitaire& t){
-	fout<<t.getId()<<"\n";
-	fout<<t.getTitre()<<"\n";
-	fout<<t.getDateDisponibilite()<<"\n";
-	fout<<t.getDateEcheance()<<"\n";
-	fout<<t.getDuree()<<"\n";
-	return fout;
-}
-
 void Tache_unitaire::afficher(std::ostream& fout) const{
     Tache::afficher(fout);
 	fout<<duree<<"\n";
+	if (isPreemptive()) fout<<"tache preemptive\n";
 }
+
 /****************************************** TACHES ********************************/
 
 void Tache::setId(const std::string& str){
@@ -39,10 +24,18 @@ void Tache::setId(const std::string& str){
   identificateur=str;
 }
 
+Tache_composite::~Tache_composite() {
+    taches_composees.erase(taches_composees.begin(), taches_composees.end());
+}
 
+Tache_composite& Tache_composite::ajouterTacheComp(Tache& t ){
+        if (t.isIn()) throw CalendarException("tache deja dans un projet ou une tache composite!");
+        taches_composees.push_back(&t);
+        t.setIn();
+        return *this;
+ }
 
-/******************************** TACHE MANAGER ******************************/
-TacheManager::TacheManager():taches(0),nb(0),nbMax(0){}
+/*********************************************************** TACHE MANAGER ***************************************************************/
 
 void TacheManager::addItem(Tache* t){
 	if (nb==nbMax){
@@ -56,10 +49,18 @@ void TacheManager::addItem(Tache* t){
 	}
 	taches[nb++]=t;
 }
+
  Tache* TacheManager::trouverTache(const std::string& id) const{
 	for(unsigned int i=0; i<nb; i++)
 		if (id==taches[i]->getId()) return taches[i];
 	return 0;
+}
+
+TacheManager::~TacheManager(){
+	if (file!="") save(file);
+	for(unsigned int i=0; i<nb; i++) delete taches[i];
+	delete[] taches;
+	file="";
 }
 
 Tache_composite& TacheManager::ajouterTache(const std::string& id, const std::string& t, const TIME::Date& dispo, const TIME::Date& deadline){
@@ -70,9 +71,9 @@ Tache_composite& TacheManager::ajouterTache(const std::string& id, const std::st
 	return *newt;
 }
 
-Tache_unitaire& TacheManager::ajouterTache(const std::string& id, const std::string& t, const TIME::Duree& dur, const TIME::Date& dispo, const TIME::Date& deadline) {
+Tache_unitaire& TacheManager::ajouterTache(const std::string& id, const std::string& t, const TIME::Duree& dur, const TIME::Date& dispo, const TIME::Date& deadline, bool preempt) {
 	if (trouverTache(id)) throw CalendarException("erreur, TacheManager, tache deja existante");
-	Tache_unitaire* newt=new Tache_unitaire(id,t,dur,dispo,deadline);
+	Tache_unitaire* newt=new Tache_unitaire(id,t,dur,dispo,deadline, preempt);
 	addItem(newt);
 	std::cout<<"tache ajoutée: "<<t<<"\n";
 	return *newt;
@@ -86,6 +87,12 @@ Tache_composite& TacheManager::ajouterTacheComposite(const std::string& id, cons
 	return *newt;
 }
 
+void TacheManager::ajouterSousTache(const std::string& id_composite, const std::string& id_sous_tache){
+    Tache& ta=getTache(id_sous_tache);
+    Tache_composite* tc=dynamic_cast<Tache_composite*>(&getTache(id_composite));
+    if (tc->getDateEcheance()<ta.getDateEcheance()) std::cout<<"date d'écheance de la tache composite pas correcte, changez la avant de reessayer!\n";
+    else tc->ajouterTacheComp(ta);
+}
 
 Tache& TacheManager::getTache(const std::string& id){
 	Tache* t=trouverTache(id);
@@ -93,41 +100,16 @@ Tache& TacheManager::getTache(const std::string& id){
 	return *t;
 }
 
-void TacheManager::ajouterSousTache(const std::string& id_composite, const std::string& id_sous_tache){
-    Tache& ta=getTache(id_sous_tache);
-    Tache_composite* tc=dynamic_cast<Tache_composite*>(&getTache(id_composite));
-    tc->ajouterTacheComp(ta);
-}
-
-
-
-void TacheManager::parcourirTacheComposite(const std::string&id){
-    Tache_composite* tc=dynamic_cast<Tache_composite*>(&getTache(id));
-     for (Tache_composite::contTache::const_iterator it=tc->taches_composees.begin();
-            it!=tc->Tache_composite::taches_composees.end(); ++it) std::cout<<**it<<"\n";
-   }
-
-
-
-
 const Tache& TacheManager::getTache(const std::string& id)const{
 	return const_cast<TacheManager*>(this)->getTache(id);
 }
-/*
-Tache_composite& TacheManager::getTacheComposite(const std::string& id){
-	Tache_composite* t=trouverTache(id);
-	if (!t) throw CalendarException("erreur, TacheManager, tache inexistante");
-	return *t;
-}
-*/
 
-TacheManager::~TacheManager(){
-	if (file!="") save(file);
-	for(unsigned int i=0; i<nb; i++) delete taches[i];
-	delete[] taches;
-	file="";
+void TacheManager::parcourirTacheComposite(const std::string&id){
+    Tache_composite* tc=dynamic_cast<Tache_composite*>(&getTache(id));
+    std::cout<<"Parcours des SousTaches de "<<tc->getTitre()<<"\n";
+     for (Tache_composite::contTache::const_iterator it=tc->taches_composees.begin();
+            it!=tc->Tache_composite::taches_composees.end(); ++it) (*it)->afficher();
 }
-
 
 void TacheManager::load(const std::string& f){
 	if (file!=f) this->~TacheManager();
@@ -166,11 +148,10 @@ void  TacheManager::save(const std::string& f){
 	file=f;
 	std::ofstream fout(f.c_str(),std::ofstream::trunc); // toutes les taches existantes sont écrasées
 	for(unsigned int i=0; i<nb; i++){
-		fout<<*taches[i];
+		(taches[i])->afficher();
 	}
 	fout.close();
 }
-
 
 TacheManager::Handler TacheManager::handler=
 TacheManager::Handler();
@@ -186,8 +167,6 @@ void TacheManager::libererInstance(){
     delete handler.instanceUnique;
     handler.instanceUnique=0;
 }
-
-
 
  TacheManager::DisponibiliteFilterIterator::DisponibiliteFilterIterator(const TIME::Date& d): //constructeur
 	   indice_tache(0), disp(d){
@@ -217,16 +196,6 @@ void ProjetManager::addItem(Projet* p){
 	projets[nb++]=p;
 }
 
-/* Tache* ProjetManager::trouverTache(const std::string& id) const{
-	for(unsigned int i=0; i<nb; i++)
-		if (id==taches[i]->getId()) return taches[i];
-	return 0;
-
-Tache& ProjetManager::getTache(const std::string& id){
-	Tache* t=trouverTache(id);
-	if (!t) throw CalendarException("erreur, TacheManager, tache inexistante");
-	return *t;*/
-
 ProjetManager::~ProjetManager(){
 	for(unsigned int i=0; i<nb; i++) delete projets[i];
 	delete[] projets;
@@ -235,13 +204,15 @@ ProjetManager::~ProjetManager(){
 void ProjetManager::ajouterTacheProjet( TacheManager& m, const std::string& id_projet, const std::string& id_tache){
     Tache& ta=m.getTache(id_tache);
     Projet& p=getProjet(id_projet);
-    p.ajouterTacheP(ta);
+    if (p.getDateEcheance()<ta.getDateEcheance()) std::cout<<"date d'écheance du projet pas correcte, changez la avant de reessayer!\n";
+    else p.ajouterTacheP(ta);
 }
 
 void ProjetManager::parcourirTacheProjet(const std::string&id){
     Projet& p=getProjet(id);
+        std::cout<<"\nParcours des Taches de "<<p.getTitre()<<"\n";
      for (Projet::contTache::const_iterator it=p.taches_projet.begin();
-            it!=p.Projet::taches_projet.end(); ++it) std::cout<<**it<<"\n";
+            it!=p.Projet::taches_projet.end(); ++it) (*it)->afficher();
    }
 
 Projet& ProjetManager::getProjet(const std::string& id){
@@ -264,4 +235,11 @@ Projet& ProjetManager::ajouterProjet(const std::string& id, const std::string& t
 	return *newt;
 }
 
+/************************************************** PROJET**************************************************************/
 
+  Projet& Projet::ajouterTacheP(Tache& t ){
+        if (t.isIn()) throw CalendarException("tache deja dans un projet ou une tache composite!");
+          taches_projet.push_back(&t);
+          t.setIn();
+        return *this;
+    }
