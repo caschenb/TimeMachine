@@ -13,3 +13,12 @@ void PrecedenceManager::libererInstance(){
 }
 PrecedenceManager::PrecedenceManager(){}
 PrecedenceManager::~PrecedenceManager(){}
+
+int PrecedenceManager::tacheProgrammable(const Tache& t)const{
+    for(int i=0;i<nb;i++){
+        if(tab[i]->getSuccesseur()==&t){
+            if(not(predProgrammee((tab[i]->getPredecesseur()),(tab[i]->getSuccesseur())))) return 0;
+        }
+    }
+    return 1;
+}
